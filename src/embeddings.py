@@ -19,6 +19,14 @@ def format_embedding_input(chunk: Chunk) -> str:
     return f"title: {chunk.chapter_title} | text: {chunk.text}"
 
 
+def format_query_input(question: str) -> str:
+    """Format one non-empty question for question-answering retrieval."""
+    stripped_question = question.strip()
+    if not stripped_question:
+        raise EmbeddingError("question must not be empty")
+    return f"task: question answering | query: {stripped_question}"
+
+
 def _vectors_from_response(response: object, expected_count: int) -> list[list[float]]:
     """Convert Gemini SDK objects to plain vectors and check one-to-one output."""
     embeddings = getattr(response, "embeddings", None)
@@ -85,3 +93,52 @@ def embed_chunks(chunks: Sequence[Chunk]) -> list[list[float]]:
         ) from error
 
     return _vectors_from_response(response, len(chunks))
+
+
+def embed_query(
+    question: str,
+    model: str = EMBEDDING_MODEL,
+    dimensions: int = EMBEDDING_DIMENSIONS,
+) -> list[float]:
+    """Request exactly one query embedding using the index configuration."""
+    formatted_query = format_query_input(question)
+    if not model:
+        raise EmbeddingError("embedding model must not be empty")
+    if (
+        not isinstance(dimensions, int)
+        or isinstance(dimensions, bool)
+        or dimensions < 1
+    ):
+        raise EmbeddingError("embedding dimensions must be a positive integer")
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise EmbeddingError("GEMINI_API_KEY is not set")
+
+    try:
+        from google import genai
+        from google.genai import types
+    except ImportError as error:
+        raise EmbeddingError(
+            "google-genai is not installed; install the project dependencies"
+        ) from error
+
+    content = types.Content(
+        parts=[types.Part.from_text(text=formatted_query)]
+    )
+    try:
+        with genai.Client(api_key=api_key) as client:
+            response = client.models.embed_content(
+                model=model,
+                contents=content,
+                config=types.EmbedContentConfig(
+                    output_dimensionality=dimensions
+                ),
+            )
+    except Exception as error:
+        safe_message = str(error).replace(api_key, "[REDACTED]")
+        raise EmbeddingError(
+            f"Gemini query embedding request failed: {safe_message}"
+        ) from error
+
+    return _vectors_from_response(response, 1)[0]

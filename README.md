@@ -69,6 +69,22 @@ python -m src.cli index show lancelot-01-chunk-001
 
 `index stats` reports model and corpus metadata plus minimum, maximum, and average vector norms. `index show` prints one item’s complete provenance and text, its dimension and norm, and only the first eight vector values.
 
+## Semantic retrieval
+
+Search embeds one French question with the index's declared Gemini model and dimensionality, calculates cosine similarity against all 70 stored vectors in plain Python, and prints the highest-scoring passages without generating an answer:
+
+```console
+set -a
+source .env.local
+set +a
+python -m src.cli search "Qui a recueilli Lancelot ?"
+python -m src.cli search "Qui a recueilli Lancelot ?" --top-k 5
+```
+
+Every result includes its rank, cosine score, chunk ID, chapter, complete chunk text, and exact Wikisource URL. The default is three results. Search makes one query-embedding request and never changes `data/index.json`; it has no threshold, adjacent-chunk filtering, reranking, deduplication, or generated answer.
+
+Cosine similarity measures how closely two vector directions align. Since Gemini's 768-dimensional vectors are normalized, their norms are approximately one and cosine similarity is approximately their dot product. A highest-ranked passage is merely the nearest passage in this corpus—it is not proof that the passage actually answers the question, especially for questions outside the corpus.
+
 The corpus, chunk ordering, IDs, input formatting, index metadata, and JSON structure are deterministic. The floating-point embedding values come from Gemini and may change if Google updates the stable model implementation; rebuilding never adds timestamps or reorders chunks.
 
 See Google’s [embedding guide](https://ai.google.dev/gemini-api/docs/embeddings) and [`gemini-embedding-2` model card](https://ai.google.dev/gemini-api/docs/models/gemini-embedding-2) for the model behavior and dimensionality guidance.
@@ -79,4 +95,4 @@ Run the verification suite with:
 python -m unittest discover -s tests
 ```
 
-The tests check the source corpus, deterministic chunks, provenance, size limits, overlap, fake-vector index construction, validation and atomic persistence, statistics, and all CLI commands. Tests never make a real network request.
+The tests check the source corpus, deterministic chunks, provenance, size limits, overlap, fake-vector index construction, validation and atomic persistence, explicit vector math, stable retrieval ordering, statistics, and all CLI commands. Tests never make a real network request.

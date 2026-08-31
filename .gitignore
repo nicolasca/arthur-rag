@@ -1,4 +1,6 @@
 *.egg-info/
+*.py[cod]
 __pycache__/
+.venv/
 .env.local
 data/index.json

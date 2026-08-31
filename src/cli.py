@@ -17,6 +17,7 @@ from src.indexing import (
     load_index,
     vector_norm,
 )
+from src.retrieval import DEFAULT_TOP_K, RetrievalError, search_index
 
 
 METADATA_LABELS = (
@@ -71,6 +72,16 @@ def build_parser() -> argparse.ArgumentParser:
     index_show_parser.add_argument(
         "chunk_id", help="stable ID such as lancelot-01-chunk-001"
     )
+    search_parser = subparsers.add_parser(
+        "search", help="retrieve passages for one French question"
+    )
+    search_parser.add_argument("question", help="question to embed and retrieve")
+    search_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=DEFAULT_TOP_K,
+        help=f"number of passages to return (default: {DEFAULT_TOP_K})",
+    )
     return parser
 
 
@@ -84,6 +95,34 @@ def main(argv: Sequence[str] | None = None) -> int:
                 f'{document["id"]:<11}  '
                 f'{document["chapter_title"]}'
             )
+        return 0
+
+    if args.command == "search":
+        try:
+            index = load_index()
+            response = search_index(index, args.question, args.top_k)
+        except (
+            EmbeddingError,
+            FileNotFoundError,
+            IndexValidationError,
+            RetrievalError,
+            OSError,
+        ) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+
+        print(f"Query vector dimensions: {len(response.query_vector)}")
+        print(f"Query vector norm: {response.query_norm:.8f}")
+        for result in response.results:
+            item = result.item
+            print()
+            print(f"=== Result {result.rank} ===")
+            print(f"Cosine similarity: {result.score:.8f}")
+            print(f'Chunk ID: {item["chunk_id"]}')
+            print(f'Chapter: {item["chapter_number"]} — {item["chapter_title"]}')
+            print(f'Source URL: {item["source_url"]}')
+            print()
+            print(item["text"])
         return 0
 
     if args.command == "index":
