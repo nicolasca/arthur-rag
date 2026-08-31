@@ -1,6 +1,6 @@
 # Arthur RAG — corpus foundation
 
-This repository is a deliberately small educational RAG project. It contains editorial source documents, deterministic chunking, a local Gemini embedding index, transparent cosine retrieval, and one grounded French answer step with locally validated citations. It has no web application, conversation memory, agents, or production infrastructure.
+This repository is a deliberately small educational RAG project. It contains editorial source documents, deterministic chunking, a local Gemini embedding index, transparent cosine retrieval, one grounded French answer step with locally validated citations, and a minimal local HTTP API. It has no frontend, conversation memory, agents, or production infrastructure.
 
 ## Corpus
 
@@ -99,6 +99,38 @@ An `answered` result must contain at least one request-local evidence ID. Local 
 `answered` also means that the response directly answers the question. For relationship or meeting questions, the supplied passages must explicitly connect the named characters; tangential facts or the separate occurrence of both names are insufficient. The generator is instructed not to infer such a connection and not to use external Arthurian knowledge.
 
 Each `ask` execution makes exactly two independent network calls: one query embedding for retrieval, followed by one non-streaming structured generation request. The response is limited to 1,024 output tokens. There are no tools, external grounding sources, retries, follow-up retrievals, conversation memory, or generated citation URLs. Local substring validation proves where a quote occurs; it does not prove that the quote semantically supports every generated claim.
+
+## Local HTTP API
+
+The root-level `app.py` exposes the same synchronous pipeline through FastAPI. After dependency changes, reinstall the editable project and its test extra:
+
+```console
+python -m pip install -e ".[test]"
+```
+
+Source `.env.local` as shown above, then start the development server from the repository root:
+
+```console
+python -m uvicorn app:app --reload
+```
+
+The health endpoint validates and reports the cached local index without contacting Gemini:
+
+```console
+curl http://127.0.0.1:8000/api/health
+```
+
+Ask one question with the server-controlled `top-k=5` pipeline:
+
+```console
+curl \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"question":"Qui recueille et élève Lancelot ?"}' \
+  http://127.0.0.1:8000/api/ask
+```
+
+`POST /api/ask` accepts only a trimmed, non-empty `question` of at most 500 characters. Its typed JSON response contains the existing generated answer, locally resolved citations, and all five ranked passages, but no vectors, prompts, keys, configuration values, or filesystem paths. The API has no CORS middleware, authentication, persistence, streaming, frontend, or deployment configuration in this slice.
 
 ## Evaluation baseline
 

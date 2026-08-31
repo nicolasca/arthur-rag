@@ -3,4 +3,11 @@ name = "arthur-rag"
 version = "0.1.0"
 description = "A small educational corpus for learning RAG primitives"
 requires-python = ">=3.10"
-dependencies = ["google-genai>=1.71.0"]
+dependencies = [
+  "fastapi>=0.115.0,<1.0",
+  "google-genai>=1.71.0",
+  "uvicorn>=0.30.0,<1.0",
+]
+
+[project.optional-dependencies]
+test = ["httpx2>=2.0.0,<3.0"]
