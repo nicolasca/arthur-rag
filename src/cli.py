@@ -8,6 +8,11 @@ from textwrap import shorten
 from src.chunking import corpus_chunk_stats, chunks_for_document, find_chunk
 from src.corpus import find_document, load_documents, read_document
 from src.embeddings import EmbeddingError
+from src.generation import (
+    DEFAULT_ASK_TOP_K,
+    GenerationError,
+    ask_question,
+)
 from src.indexing import (
     INDEX_PATH,
     IndexValidationError,
@@ -82,6 +87,16 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_TOP_K,
         help=f"number of passages to return (default: {DEFAULT_TOP_K})",
     )
+    ask_parser = subparsers.add_parser(
+        "ask", help="generate one grounded French answer"
+    )
+    ask_parser.add_argument("question", help="question to retrieve and answer")
+    ask_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=DEFAULT_ASK_TOP_K,
+        help=f"number of passages to ground the answer (default: {DEFAULT_ASK_TOP_K})",
+    )
     return parser
 
 
@@ -95,6 +110,52 @@ def main(argv: Sequence[str] | None = None) -> int:
                 f'{document["id"]:<11}  '
                 f'{document["chapter_title"]}'
             )
+        return 0
+
+    if args.command == "ask":
+        try:
+            index = load_index()
+            response = ask_question(index, args.question, args.top_k)
+        except (
+            EmbeddingError,
+            FileNotFoundError,
+            GenerationError,
+            IndexValidationError,
+            RetrievalError,
+            OSError,
+        ) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+
+        print("Retrieved passages:")
+        for result in response.retrieval.results:
+            print(
+                f'{result.rank}. {result.item["chunk_id"]} '
+                f'(cosine: {result.score:.8f})'
+            )
+
+        answer = response.grounded_answer
+        print()
+        print(f"Status: {answer.status}")
+        if answer.status == "insufficient":
+            print(
+                "Evidence: the retrieved passages do not establish an answer."
+            )
+        print("Answer:")
+        print(answer.answer)
+        print()
+        print("Citations:")
+        if not answer.citations:
+            print("None")
+        for position, citation in enumerate(answer.citations, start=1):
+            print(f'{position}. "{citation.quote}"')
+            print(f"   Evidence ID: {citation.evidence_id}")
+            print(f"   Chunk ID: {citation.chunk_id}")
+            print(
+                f"   Chapter: {citation.chapter_number} — "
+                f"{citation.chapter_title}"
+            )
+            print(f"   Source URL: {citation.source_url}")
         return 0
 
     if args.command == "search":

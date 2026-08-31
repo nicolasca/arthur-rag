@@ -1,6 +1,6 @@
 # Arthur RAG — corpus foundation
 
-This repository is a deliberately small educational RAG project. It contains editorial source documents, deterministic chunking, a local Gemini embedding index, and simple inspection tools. There is still no similarity search, retrieval, LLM answer generation, or citation layer.
+This repository is a deliberately small educational RAG project. It contains editorial source documents, deterministic chunking, a local Gemini embedding index, transparent cosine retrieval, and one grounded French answer step with locally validated citations. It has no web application, conversation memory, agents, or production infrastructure.
 
 ## Corpus
 
@@ -48,7 +48,7 @@ The index is built with the official `google-genai` SDK and stable `gemini-embed
 title: {chapter title} | text: {chunk text}
 ```
 
-The model returns one distinct 768-dimensional embedding per chunk. `src/embeddings.py` is the only module that imports Gemini SDK types, reads `GEMINI_API_KEY`, or performs network access. It does not retry or select fallback models. `src/indexing.py` joins the returned vectors to chunk text and provenance, validates the complete result, and only then atomically writes an indented `data/index.json`.
+The model returns one distinct 768-dimensional embedding per chunk. `src/embeddings.py` is the embedding-specific network boundary: it imports Gemini SDK types, reads `GEMINI_API_KEY`, and makes embedding requests without retries or fallback models. The separate generation request is isolated in `src/generation.py`. `src/indexing.py` joins document vectors to chunk text and provenance, validates the complete result, and only then atomically writes an indented `data/index.json`.
 
 Install the project, provide the key through the environment, and build the index. For a local project-specific secret, put `GEMINI_API_KEY=your-key` in the Git-ignored `.env.local`, then source it into the shell:
 
@@ -85,6 +85,21 @@ Every result includes its rank, cosine score, chunk ID, chapter, complete chunk 
 
 Cosine similarity measures how closely two vector directions align. Since Gemini's 768-dimensional vectors are normalized, their norms are approximately one and cosine similarity is approximately their dot product. A highest-ranked passage is merely the nearest passage in this corpus—it is not proof that the passage actually answers the question, especially for questions outside the corpus.
 
+## Grounded answers
+
+The `ask` command retrieves five passages by default, sends only the question and those passages to `gemini-3.1-flash-lite`, and requests one structured French answer:
+
+```console
+python -m src.cli ask "Qui recueille et élève Lancelot ?"
+python -m src.cli ask "Qui recueille et élève Lancelot ?" --top-k 5
+```
+
+An `answered` result must contain at least one request-local evidence ID. Local code derives four exact citation candidates from each retrieved passage and binds every one to a stable ID such as `evidence-01`. Gemini returns only those IDs; local code resolves each ID to its one fixed chunk, verbatim quote, chapter metadata, and Wikisource URL. This prevents a quote from one passage being paired with another passage's chunk ID. Unknown IDs are rejected and repeated IDs are deterministically collapsed to their first occurrence. An `insufficient` result states that the retrieved passages do not establish an answer and may contain no evidence IDs.
+
+`answered` also means that the response directly answers the question. For relationship or meeting questions, the supplied passages must explicitly connect the named characters; tangential facts or the separate occurrence of both names are insufficient. The generator is instructed not to infer such a connection and not to use external Arthurian knowledge.
+
+Each `ask` execution makes exactly two independent network calls: one query embedding for retrieval, followed by one non-streaming structured generation request. The response is limited to 1,024 output tokens. There are no tools, external grounding sources, retries, follow-up retrievals, conversation memory, or generated citation URLs. Local substring validation proves where a quote occurs; it does not prove that the quote semantically supports every generated claim.
+
 The corpus, chunk ordering, IDs, input formatting, index metadata, and JSON structure are deterministic. The floating-point embedding values come from Gemini and may change if Google updates the stable model implementation; rebuilding never adds timestamps or reorders chunks.
 
 See Google’s [embedding guide](https://ai.google.dev/gemini-api/docs/embeddings) and [`gemini-embedding-2` model card](https://ai.google.dev/gemini-api/docs/models/gemini-embedding-2) for the model behavior and dimensionality guidance.
@@ -95,4 +110,4 @@ Run the verification suite with:
 python -m unittest discover -s tests
 ```
 
-The tests check the source corpus, deterministic chunks, provenance, size limits, overlap, fake-vector index construction, validation and atomic persistence, explicit vector math, stable retrieval ordering, statistics, and all CLI commands. Tests never make a real network request.
+The tests check the source corpus, deterministic chunks, provenance, size limits, overlap, fake-vector index construction, validation and atomic persistence, explicit vector math, stable retrieval ordering, structured generation, citation validation, statistics, and all CLI commands. Tests never make a real network request.
