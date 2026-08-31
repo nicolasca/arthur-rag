@@ -56,6 +56,14 @@ StructuredGenerator = Callable[[str, Sequence[str]], dict[str, Any]]
 class GenerationError(ValueError):
     """Gemini output is unavailable, malformed, or locally unverifiable."""
 
+    def __init__(
+        self,
+        message: str,
+        retrieval: SearchResponse | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.retrieval = retrieval
+
 
 @dataclass(frozen=True)
 class EvidenceCandidate:
@@ -409,17 +417,21 @@ def ask_question(
 ) -> AskResponse:
     """Retrieve once, generate once, then validate against retrieved text."""
     retrieval = search_index(index, question, top_k, query_embedder)
-    evidence_candidates = build_evidence_candidates(retrieval.results)
-    prompt = build_generation_prompt(
-        question, retrieval.results, evidence_candidates
-    )
-    allowed_evidence_ids = [
-        candidate.evidence_id for candidate in evidence_candidates
-    ]
-    payload = generator(prompt, allowed_evidence_ids)
-    grounded_answer = validate_generated_answer(
-        payload, evidence_candidates, retrieval.results
-    )
+    try:
+        evidence_candidates = build_evidence_candidates(retrieval.results)
+        prompt = build_generation_prompt(
+            question, retrieval.results, evidence_candidates
+        )
+        allowed_evidence_ids = [
+            candidate.evidence_id for candidate in evidence_candidates
+        ]
+        payload = generator(prompt, allowed_evidence_ids)
+        grounded_answer = validate_generated_answer(
+            payload, evidence_candidates, retrieval.results
+        )
+    except GenerationError as error:
+        error.retrieval = retrieval
+        raise
     return AskResponse(
         retrieval=retrieval,
         grounded_answer=grounded_answer,

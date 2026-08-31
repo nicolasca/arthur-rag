@@ -3,11 +3,22 @@
 import argparse
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 from textwrap import shorten
 
 from src.chunking import corpus_chunk_stats, chunks_for_document, find_chunk
 from src.corpus import find_document, load_documents, read_document
 from src.embeddings import EmbeddingError
+from src.evaluation import (
+    EvaluationError,
+    format_answer_report,
+    format_retrieval_report,
+    load_evaluation_cases,
+    run_answer_evaluation,
+    run_retrieval_evaluation,
+    select_cases,
+    write_evaluation_result,
+)
 from src.generation import (
     DEFAULT_ASK_TOP_K,
     GenerationError,
@@ -97,6 +108,28 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_ASK_TOP_K,
         help=f"number of passages to ground the answer (default: {DEFAULT_ASK_TOP_K})",
     )
+    eval_parser = subparsers.add_parser(
+        "eval", help="run the small curated RAG evaluation"
+    )
+    eval_commands = eval_parser.add_subparsers(
+        dest="evaluation_type", required=True
+    )
+    for evaluation_type in ("retrieval", "answers"):
+        evaluation_parser = eval_commands.add_parser(evaluation_type)
+        evaluation_parser.add_argument(
+            "--case", dest="case_id", help="run one stable evaluation case ID"
+        )
+        evaluation_parser.add_argument(
+            "--top-k",
+            type=int,
+            default=5,
+            help="number of passages to retrieve (default: 5)",
+        )
+        evaluation_parser.add_argument(
+            "--output",
+            type=Path,
+            help="optionally save the complete result as readable JSON",
+        )
     return parser
 
 
@@ -110,6 +143,40 @@ def main(argv: Sequence[str] | None = None) -> int:
                 f'{document["id"]:<11}  '
                 f'{document["chapter_title"]}'
             )
+        return 0
+
+    if args.command == "eval":
+        try:
+            index = load_index()
+            cases = select_cases(
+                load_evaluation_cases(index), args.case_id
+            )
+            if args.evaluation_type == "retrieval":
+                result = run_retrieval_evaluation(
+                    index, cases, args.top_k
+                )
+                report = format_retrieval_report(result)
+            else:
+                result = run_answer_evaluation(index, cases, args.top_k)
+                report = format_answer_report(result)
+            if args.output is not None:
+                write_evaluation_result(args.output, result)
+        except (
+            EmbeddingError,
+            EvaluationError,
+            FileNotFoundError,
+            GenerationError,
+            IndexValidationError,
+            RetrievalError,
+            OSError,
+        ) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+
+        print(report)
+        if args.output is not None:
+            print()
+            print(f"Wrote evaluation result to {args.output}")
         return 0
 
     if args.command == "ask":

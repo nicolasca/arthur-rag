@@ -1,0 +1,90 @@
+[
+  {
+    "case_id": "raises-lancelot",
+    "question": "Qui élève Lancelot après sa disparition ?",
+    "expected_status": "answered",
+    "acceptable_evidence_chunk_ids": [
+      "lancelot-07-chunk-002",
+      "lancelot-18-chunk-001",
+      "lancelot-19-chunk-001"
+    ],
+    "rationale": "La Dame du Lac protège Lancelot, lui donne une nourrice et il grandit auprès d’elle."
+  },
+  {
+    "case_id": "ban-leaves-trebe",
+    "question": "Pourquoi le roi Ban quitte-t-il secrètement Trèbe ?",
+    "expected_status": "answered",
+    "acceptable_evidence_chunk_ids": [
+      "lancelot-01-chunk-002"
+    ],
+    "rationale": "Ban explique qu’il veut demander lui-même l’aide du roi Artus afin de susciter davantage sa pitié."
+  },
+  {
+    "case_id": "lionel-bohor-brothers",
+    "question": "Quel lien familial unit Lionel et Bohor ?",
+    "expected_status": "answered",
+    "acceptable_evidence_chunk_ids": [
+      "lancelot-05-chunk-001",
+      "lancelot-12-chunk-002"
+    ],
+    "rationale": "Lionel et Bohor sont les deux fils du roi Bohor de Gannes et sont explicitement désignés comme frères."
+  },
+  {
+    "case_id": "lancelot-gives-horse",
+    "question": "Que donne Lancelot au chevalier dont le cheval est blessé ?",
+    "expected_status": "answered",
+    "acceptable_evidence_chunk_ids": [
+      "lancelot-08-chunk-002"
+    ],
+    "rationale": "Lancelot descend de cheval et donne sa propre monture au chevalier pour qu’il puisse arriver à temps."
+  },
+  {
+    "case_id": "saraide-rescues-children",
+    "question": "Comment Saraïde libère-t-elle Lionel et Bohor ?",
+    "expected_status": "answered",
+    "acceptable_evidence_chunk_ids": [
+      "lancelot-13-chunk-003",
+      "lancelot-13-chunk-004",
+      "lancelot-14-chunk-001",
+      "lancelot-15-chunk-005"
+    ],
+    "rationale": "Saraïde échange par enchantement l’apparence des enfants et de ses lévriers, emmène les enfants déguisés puis défait l’enchantement."
+  },
+  {
+    "case_id": "lake-youth-seeks-arthur",
+    "question": "Pourquoi le jeune protégé de la Dame du Lac veut-il rejoindre la cour d’Artus ?",
+    "expected_status": "answered",
+    "acceptable_evidence_chunk_ids": [
+      "lancelot-19-chunk-002"
+    ],
+    "rationale": "Lancelot veut servir un prud’homme à la cour d’Artus jusqu’à ce qu’il soit fait chevalier."
+  },
+  {
+    "case_id": "lancelot-romance",
+    "question": "Le corpus établit-il une relation amoureuse de Lancelot ?",
+    "expected_status": "insufficient",
+    "acceptable_evidence_chunk_ids": [],
+    "rationale": "Les chapitres décrivent son enfance, des liens protecteurs et une remarque ultérieure de Guenièvre, mais aucune relation romantique de Lancelot n’y est explicitement établie."
+  },
+  {
+    "case_id": "arthur-excalibur-stone",
+    "question": "Comment Arthur retire-t-il Excalibur de la pierre ?",
+    "expected_status": "insufficient",
+    "acceptable_evidence_chunk_ids": [],
+    "rationale": "L’épisode d’Excalibur dans la pierre n’est pas raconté dans Les Enfances de Lancelot."
+  },
+  {
+    "case_id": "arthur-lancelot-first-meeting",
+    "question": "Comment Arthur et Lancelot se rencontrent-ils pour la première fois ?",
+    "expected_status": "insufficient",
+    "acceptable_evidence_chunk_ids": [],
+    "rationale": "Le corpus annonce de futurs événements à la cour d’Artus, mais ne raconte pas une première rencontre entre Arthur et Lancelot."
+  },
+  {
+    "case_id": "arthur-fights-barons",
+    "question": "Pourquoi Arthur combat-il ses barons en Bretagne ?",
+    "expected_status": "insufficient",
+    "acceptable_evidence_chunk_ids": [],
+    "rationale": "Le corpus mentionne qu’Arthur combat ses barons, sans expliquer la cause de ce conflit."
+  }
+]

@@ -100,6 +100,23 @@ An `answered` result must contain at least one request-local evidence ID. Local 
 
 Each `ask` execution makes exactly two independent network calls: one query embedding for retrieval, followed by one non-streaming structured generation request. The response is limited to 1,024 output tokens. There are no tools, external grounding sources, retries, follow-up retrievals, conversation memory, or generated citation URLs. Local substring validation proves where a quote occurs; it does not prove that the quote semantically supports every generated claim.
 
+## Evaluation baseline
+
+The fixed dataset in `evaluation/cases.json` contains six answerable questions and four questions expected to be insufficient. It is intentionally small and curated against the actual deterministic chunk IDs. Run retrieval and answer generation separately:
+
+```console
+python -m src.cli eval retrieval
+python -m src.cli eval answers
+python -m src.cli eval retrieval --case raises-lancelot
+python -m src.cli eval answers --case raises-lancelot
+```
+
+Both commands accept `--top-k` (default `5`). Retrieval evaluation requires at least five results so it can report Hit@1, Hit@3, and Hit@5. A hit means that at least one acceptable evidence chunk appears by that rank; insufficient cases are displayed but excluded because cosine retrieval always returns neighbours.
+
+Answer evaluation calls the existing `ask` pipeline once per case. It checks status agreement, local citation validation, and whether an answered result cites an acceptable chunk. These checks do not measure semantic correctness. Every complete answer is printed with a manual-review checklist, and no LLM judge or keyword-based semantic score is used.
+
+Add `--output evaluation/results.json` to either command to save readable JSON containing models, the index SHA-256, metrics, ranks, scores, answers, and locally resolved citations. No file is written without that option; the conventional result path is ignored by Git.
+
 The corpus, chunk ordering, IDs, input formatting, index metadata, and JSON structure are deterministic. The floating-point embedding values come from Gemini and may change if Google updates the stable model implementation; rebuilding never adds timestamps or reorders chunks.
 
 See Google’s [embedding guide](https://ai.google.dev/gemini-api/docs/embeddings) and [`gemini-embedding-2` model card](https://ai.google.dev/gemini-api/docs/models/gemini-embedding-2) for the model behavior and dimensionality guidance.
