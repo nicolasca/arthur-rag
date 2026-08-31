@@ -117,6 +117,8 @@ Answer evaluation calls the existing `ask` pipeline once per case. It checks sta
 
 Add `--output evaluation/results.json` to either command to save readable JSON containing models, the index SHA-256, metrics, ranks, scores, answers, and locally resolved citations. No file is written without that option; the conventional result path is ignored by Git.
 
+The first recorded run is summarized in the versioned `evaluation/baseline.md`; unlike the ignored generated JSON, it preserves the baseline metrics and manual verdicts across future model runs.
+
 The corpus, chunk ordering, IDs, input formatting, index metadata, and JSON structure are deterministic. The floating-point embedding values come from Gemini and may change if Google updates the stable model implementation; rebuilding never adds timestamps or reorders chunks.
 
 See Google’s [embedding guide](https://ai.google.dev/gemini-api/docs/embeddings) and [`gemini-embedding-2` model card](https://ai.google.dev/gemini-api/docs/models/gemini-embedding-2) for the model behavior and dimensionality guidance.
