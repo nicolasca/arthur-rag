@@ -5,3 +5,5 @@ __pycache__/
 .env.local
 data/index.json
 evaluation/results.json
+web/node_modules/
+web/dist/

@@ -1,6 +1,6 @@
 # Arthur RAG — corpus foundation
 
-This repository is a deliberately small educational RAG project. It contains editorial source documents, deterministic chunking, a local Gemini embedding index, transparent cosine retrieval, one grounded French answer step with locally validated citations, and a minimal local HTTP API. It has no frontend, conversation memory, agents, or production infrastructure.
+This repository is a deliberately small educational RAG project. It contains editorial source documents, deterministic chunking, a local Gemini embedding index, transparent cosine retrieval, one grounded French answer step with locally validated citations, a minimal local HTTP API, and a small React consultation interface. It has no conversation memory, agents, or production infrastructure.
 
 ## Corpus
 
@@ -130,7 +130,41 @@ curl \
   http://127.0.0.1:8000/api/ask
 ```
 
-`POST /api/ask` accepts only a trimmed, non-empty `question` of at most 500 characters. Its typed JSON response contains the existing generated answer, locally resolved citations, and all five ranked passages, but no vectors, prompts, keys, configuration values, or filesystem paths. The API has no CORS middleware, authentication, persistence, streaming, frontend, or deployment configuration in this slice.
+`POST /api/ask` accepts only a trimmed, non-empty `question` of at most 500 characters. Its typed JSON response contains the existing generated answer, locally resolved citations, and all five ranked passages, but no vectors, prompts, keys, configuration values, or filesystem paths. The API has no CORS middleware, authentication, persistence, streaming, or deployment configuration in this slice.
+
+## Local web interface
+
+The `web/` directory contains a deliberately small React, TypeScript, and Vite single-page interface. It sends one trimmed question to `POST /api/ask`, displays the grounded answer and locally resolved citations, and leaves the five retrieved passages in a secondary collapsed section. It does not reproduce retrieval or generation logic in the browser.
+
+Run the API and interface in two terminals from the repository root. In terminal 1:
+
+```console
+source .venv/bin/activate
+set -a
+source .env.local
+set +a
+python -m uvicorn app:app --reload
+```
+
+In terminal 2:
+
+```console
+cd web
+npm install
+npm run dev
+```
+
+Open the local URL printed by Vite. During development, Vite proxies same-origin `/api` requests to `http://127.0.0.1:8000`; the React code contains neither a backend base URL nor a Gemini key. `GEMINI_API_KEY` remains in the environment of the Python process, and browser questions are sent to Gemini by that server. Do not submit private or confidential information.
+
+Frontend checks run independently of FastAPI and mock the browser `fetch` boundary:
+
+```console
+cd web
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
 
 ## Evaluation baseline
 
