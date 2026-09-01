@@ -3,7 +3,8 @@
 __pycache__/
 .venv/
 .env.local
-data/index.json
 evaluation/results.json
 web/node_modules/
 web/dist/
+.vercel
+.env*

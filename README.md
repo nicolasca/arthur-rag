@@ -1,6 +1,6 @@
 # Arthur RAG — corpus foundation
 
-This repository is a deliberately small educational RAG project. It contains editorial source documents, deterministic chunking, a local Gemini embedding index, transparent cosine retrieval, one grounded French answer step with locally validated citations, a minimal local HTTP API, and a small React consultation interface. It has no conversation memory, agents, or production infrastructure.
+This repository is a deliberately small educational RAG project. It contains editorial source documents, deterministic chunking, a local Gemini embedding index, transparent cosine retrieval, one grounded French answer step with locally validated citations, a minimal local HTTP API, and a small React consultation interface. It has no conversation memory, agents, or production infrastructure beyond a single preview-oriented Vercel Services configuration.
 
 ## Corpus
 
@@ -60,7 +60,11 @@ set +a
 python -m src.cli index build
 ```
 
-The Python code reads only the resulting environment variable; it does not parse `.env.local` or require a dotenv package. The key is never printed, copied into the index, or committed to Git. Both `.env.local` and the generated `data/index.json` are ignored. Once a build succeeds, inspect the index without another network request:
+The Python code reads only the resulting environment variable; it does not parse `.env.local` or require a dotenv package. The key is never printed, copied into the index, or committed to Git. `.env.local` remains ignored.
+
+`data/index.json` is intentionally versioned as a deployment artifact. It contains embeddings derived from the public Wikisource corpus, not credentials, and lets the read-only FastAPI service start without calling Gemini during installation or deployment. Rebuild and recommit it whenever the corpus, deterministic chunking settings, embedding model, or embedding dimensions change. A rebuild is a deliberate local operation using the command above; Vercel never rebuilds the index.
+
+Once a build succeeds, inspect the index without another network request:
 
 ```console
 python -m src.cli index stats
@@ -68,6 +72,8 @@ python -m src.cli index show lancelot-01-chunk-001
 ```
 
 `index stats` reports model and corpus metadata plus minimum, maximum, and average vector norms. `index show` prints one item’s complete provenance and text, its dimension and norm, and only the first eight vector values.
+
+Before committing a rebuilt artifact, run `python -m src.cli index stats`, review its metadata, and stage the validated file with `git add data/index.json`.
 
 ## Semantic retrieval
 
@@ -130,7 +136,7 @@ curl \
   http://127.0.0.1:8000/api/ask
 ```
 
-`POST /api/ask` accepts only a trimmed, non-empty `question` of at most 500 characters. Its typed JSON response contains the existing generated answer, locally resolved citations, and all five ranked passages, but no vectors, prompts, keys, configuration values, or filesystem paths. The API has no CORS middleware, authentication, persistence, streaming, or deployment configuration in this slice.
+`POST /api/ask` accepts only a trimmed, non-empty `question` of at most 500 characters. Its typed JSON response contains the existing generated answer, locally resolved citations, and all five ranked passages, but no vectors, prompts, keys, configuration values, or filesystem paths. The API has no CORS middleware, application authentication, persistence, or streaming.
 
 ## Local web interface
 
@@ -165,6 +171,39 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+## Vercel Services preview
+
+The root `vercel.json` defines one Vercel project with two independently built services:
+
+| Public route | Service | Build/runtime behavior |
+|---|---|---|
+| `/api/*` | `backend` | Vercel detects the root `app.py` export `app`, installs `pyproject.toml` dependencies, and runs FastAPI in the Python runtime. |
+| All non-API paths | `frontend` | Vercel runs `npm ci` and `npm run build` in `web/`, then serves `web/dist`. A rewrite inside this service selects `index.html` for unknown browser paths, while real assets retain their paths. |
+
+The backend service root is the repository root, so its Python bundle contains the tracked `data/index.json`, corpus metadata, and Python modules. Existing paths are anchored to source files with `Path(__file__)`, not to an assumed working directory. The index is loaded read-only on the first request in a warm function instance and retained by the existing in-process cache for later requests. No Vercel build command writes the index or contacts Gemini.
+
+The browser continues to call the relative URL `/api/ask`. Vercel’s top-level routing sends that same-origin request to FastAPI, so no public backend URL or CORS middleware is required.
+
+Use the current CLI without installing global tooling:
+
+```console
+npx --yes vercel@59.10.0 login
+npx --yes vercel@59.10.0 link
+npx --yes vercel@59.10.0 dev -L
+```
+
+The current CLI's local FastAPI Services runtime requires Python 3.12 or newer. Local mode can validate service detection, FastAPI health, and the unified routing order, but the deployed preview remains the authoritative check for the production `/assets/*` paths and SPA fallback.
+
+Link the repository to the single `arthur-rag` project and set its framework preset to **Services**. Before creating a preview, add the environment variable named `GEMINI_API_KEY` manually in the Vercel dashboard for the Preview environment. Never paste its value into source files, `vercel.json`, a command argument, or a frontend variable. If the dashboard cannot scope variables per service, the unprefixed server variable remains unavailable to Vite client code: Vite only exposes explicitly referenced `VITE_*` variables, and this project defines none.
+
+Enable **Vercel Authentication** with **Standard Protection** under the project’s Deployment Protection settings, then create a preview—not a production deployment—with:
+
+```console
+npx --yes vercel@59.10.0 deploy
+```
+
+Visitor questions are transmitted by the backend to Google Gemini. Do not submit personal or confidential information. Availability and quotas for both Vercel and Gemini free tiers can change and are not guaranteed; do not expose a public production endpoint without reviewing quota-consumption risk.
 
 ## Evaluation baseline
 
